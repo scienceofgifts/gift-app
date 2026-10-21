@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, ArrowUpRight, Sparkles, Eye } from 'lucide-react';
-import { ScoredProduct, Product } from '../types/gift';
+import { ChevronLeft, ChevronRight, Bookmark, Check, ArrowUpRight, Sparkles, Eye } from 'lucide-react';
+import { ScoredProduct, Product, isAmazonProduct } from '../types/gift';
+import { useSavedGifts } from '../context/SavedGiftsContext';
 import { SaveToListPopover } from './SaveToListPopover';
 
 interface PrimaryRecommendationCarouselProps {
@@ -14,67 +15,60 @@ export const PrimaryRecommendationCarousel: React.FC<PrimaryRecommendationCarous
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
 
+  // Take top 5 candidates for Level 1 Spotlight Carousel
   const topPicks = scoredProducts.slice(0, 5);
-  const currentPick = topPicks[currentIndex];
 
   useEffect(() => {
     setCurrentIndex(0);
   }, [scoredProducts]);
 
-  if (!currentPick) return null;
+  if (topPicks.length === 0) return null;
 
-  const { product, tailoredWhyThisGift, matchingReasons } = currentPick;
-
-  const handlePrev = () => {
-    setCurrentIndex((prev) => (prev === 0 ? topPicks.length - 1 : prev - 1));
-  };
+  const currentPick = topPicks[currentIndex] || topPicks[0];
+  const { product, matchingReasons, tailoredWhyThisGift } = currentPick;
+  const isAmazon = isAmazonProduct(product);
 
   const handleNext = () => {
-    setCurrentIndex((prev) => (prev === topPicks.length - 1 ? 0 : prev + 1));
+    setCurrentIndex((prev) => (prev + 1) % topPicks.length);
+  };
+
+  const handlePrev = () => {
+    setCurrentIndex((prev) => (prev - 1 + topPicks.length) % topPicks.length);
   };
 
   return (
     <section className="mb-14">
       
-      {/* Section Header with Carousel Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-4 border-b border-[#E2E5E9] mb-6">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-mono-accent font-semibold uppercase tracking-wider text-[#2A548E] mb-1">
-            <Sparkles className="w-3.5 h-3.5 text-[#2A548E]" />
-            <span>Level 1 · Best Match</span>
-            {currentIndex === 0 && (
-              <span className="text-[#226E56] font-bold bg-[#C3F3DF] px-2 py-0.5 rounded-xs text-[10px]">
-                Strongest Match
-              </span>
-            )}
-          </div>
-          <h2 className="font-editorial text-2xl sm:text-3xl text-[#1E232B] font-bold">
-            The Curated Primary Selection
+      {/* Section Header with Navigation Controls */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-[#226E56]" />
+          <h2 className="font-editorial text-2xl sm:text-3xl text-[#1E232B] font-bold tracking-tight">
+            Primary Curator Recommendation
           </h2>
         </div>
 
-        {/* Carousel Pagination & Arrows */}
         {topPicks.length > 1 && (
-          <div className="flex items-center gap-3">
-            <span className="font-mono-accent text-xs text-[#5A6270] font-medium tracking-wider">
-              {currentIndex + 1} / {topPicks.length} Strongest Picks
+          <div className="flex items-center gap-2">
+            <span className="font-mono-accent text-xs text-[#5A6270] mr-2 hidden sm:inline">
+              Top Match {currentIndex + 1} of {topPicks.length}
             </span>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={handlePrev}
-                className="p-1.5 rounded-xs border border-[#DCE1E7] bg-white hover:bg-[#EAEFF5] text-[#1E232B] transition-colors cursor-pointer"
-                aria-label="Previous recommendation"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <button
-                onClick={handleNext}
-                className="p-1.5 rounded-xs border border-[#DCE1E7] bg-white hover:bg-[#EAEFF5] text-[#1E232B] transition-colors cursor-pointer"
-                aria-label="Next recommendation"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
+
+            <button
+              onClick={handlePrev}
+              className="p-2 rounded-xs border border-[#DCE1E7] bg-white hover:bg-[#EAEFF5] text-[#1E232B] transition-colors cursor-pointer"
+              aria-label="Previous recommendation"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={handleNext}
+              className="p-2 rounded-xs border border-[#DCE1E7] bg-white hover:bg-[#EAEFF5] text-[#1E232B] transition-colors cursor-pointer"
+              aria-label="Next recommendation"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
           </div>
         )}
       </div>
@@ -163,15 +157,31 @@ export const PrimaryRecommendationCarousel: React.FC<PrimaryRecommendationCarous
               {product.title}
             </h3>
 
-            {/* Price & Rating */}
-            <div className="flex items-center gap-4 mb-5">
-              <span className="font-mono-accent text-2xl text-[#1E232B] font-bold">
-                {product.price}
-              </span>
-              <span className="text-xs text-[#5A6270] font-sans-clean">
-                Science of Gifts Curated · In Stock
-              </span>
-            </div>
+            {/* Price & Rating (With Amazon Compliance Logic) */}
+            {isAmazon ? (
+              <div className="flex flex-col gap-0.5 mb-5">
+                <div className="flex items-center gap-3">
+                  <span className="font-mono-accent text-2xl text-[#1E232B] font-bold">
+                    {product.priceRange}
+                  </span>
+                  <span className="text-xs text-[#2A548E] font-sans-clean font-semibold bg-[#EAEFF5] px-2 py-0.5 rounded-xs">
+                    Live pricing via Amazon
+                  </span>
+                </div>
+                <span className="text-[11px] text-[#7A8290] font-sans-clean">
+                  Prices and availability on Amazon subject to change
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-4 mb-5">
+                <span className="font-mono-accent text-2xl text-[#1E232B] font-bold">
+                  {product.price}
+                </span>
+                <span className="text-xs text-[#5A6270] font-sans-clean">
+                  Science of Gifts Curated · In Stock
+                </span>
+              </div>
+            )}
 
             {/* Concierge Match Rationale */}
             <div className="p-4 bg-[#F2F6FB] border-l-3 border-[#2A548E] rounded-xs mb-5">
@@ -211,7 +221,7 @@ export const PrimaryRecommendationCarousel: React.FC<PrimaryRecommendationCarous
                 rel="noopener noreferrer"
                 className="px-5 py-2.5 bg-[#1E232B] hover:bg-[#2A548E] text-white font-sans-clean text-sm font-semibold rounded-xs transition-colors inline-flex items-center gap-2 cursor-pointer shadow-xs"
               >
-                <span>View on {product.vendor}</span>
+                <span>{isAmazon ? 'Check Price on Amazon' : `View on ${product.vendor}`}</span>
                 <ArrowUpRight className="w-4 h-4 text-[#C3F3DF]" />
               </a>
 
@@ -219,7 +229,7 @@ export const PrimaryRecommendationCarousel: React.FC<PrimaryRecommendationCarous
                 onClick={() => onSelectProduct(product)}
                 className="px-4 py-2.5 bg-white hover:bg-[#EAEFF5] border border-[#DCE1E7] text-[#1E232B] font-sans-clean text-sm font-medium rounded-xs transition-colors cursor-pointer"
               >
-                Inspect All Details
+                Explore the Gift
               </button>
 
               <SaveToListPopover product={product} variant="button" />

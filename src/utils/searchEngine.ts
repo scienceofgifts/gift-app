@@ -361,17 +361,38 @@ export function rankCatalog(
       }
     }
 
-    // --- 7. Negation Penalty ---
+    // --- 7. Negation Penalty (NL Query Negatives & Explicit Avoid Filters) ---
     if (interp.negativePreferences.length > 0) {
       for (const neg of interp.negativePreferences) {
         const negLower = neg.toLowerCase();
         if (
           (negLower.includes('decorative') && product.category === 'Posters & Art Prints') ||
-          (negLower.includes('clothing') || negLower.includes('shirt') && product.category === 'Apparel') ||
+          ((negLower.includes('clothing') || negLower.includes('shirt')) && product.category === 'Apparel') ||
           (negLower.includes('mug') && product.productType === 'Mug') ||
           (negLower.includes('junk') && product.priceNumber < 20)
         ) {
           negativePenalty += 40;
+        }
+      }
+    }
+
+    if (filters.avoidKeywords && filters.avoidKeywords.length > 0) {
+      for (const rawAvoid of filters.avoidKeywords) {
+        const avoid = rawAvoid.toLowerCase().trim();
+        const matchesCategoryOrType =
+          (avoid === 'mug' && (product.productType === 'Mug' || product.title.toLowerCase().includes('mug'))) ||
+          (avoid === 'apparel' && (product.category === 'Apparel' || product.productType === 'Hoodie' || product.productType === 'T-shirt')) ||
+          ((avoid === 'poster' || avoid === 'print') && (product.category === 'Posters & Art Prints' || product.productType === 'Poster & Print')) ||
+          ((avoid === 'candle' || avoid === 'fragrance') && (product.tags.includes('candle') || product.title.toLowerCase().includes('candle'))) ||
+          ((avoid === 'decorative' || avoid === 'clutter') && (product.category === 'Posters & Art Prints' || (product.personalityStyles.includes('Creative & Artistic') && !product.personalityStyles.includes('Practical & Utilitarian'))));
+
+        const matchesGeneralText =
+          product.productType.toLowerCase().includes(avoid) ||
+          product.category.toLowerCase().includes(avoid) ||
+          product.tags.some(t => t.toLowerCase().includes(avoid));
+
+        if (matchesCategoryOrType || matchesGeneralText) {
+          negativePenalty += 60;
         }
       }
     }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   Trash2,
@@ -20,7 +20,7 @@ import {
   Edit2
 } from 'lucide-react';
 import { useSavedGifts } from '../context/SavedGiftsContext';
-import { Product, GiftList, RecipientProfile } from '../types/gift';
+import { Product, GiftList, RecipientProfile, isAmazonProduct } from '../types/gift';
 
 interface SavedGiftsDrawerProps {
   onSelectProduct: (product: Product) => void;
@@ -44,12 +44,19 @@ export const SavedGiftsDrawer: React.FC<SavedGiftsDrawerProps> = ({
     setSavedDrawerOpen,
     activeListId,
     setActiveListId,
-    activeShoppingRecipient
+    drawerCreateMode,
+    setDrawerCreateMode
   } = useSavedGifts();
 
-  const [selectedListId, setSelectedListId] = useState<string>(activeListId || lists[0]?.id || 'list-dad');
+  const [selectedListId, setSelectedListId] = useState<string>(activeListId || lists[0]?.id || '');
   const [isCreatingList, setIsCreatingList] = useState(false);
+  const [isProfileType, setIsProfileType] = useState(true);
   const [newListName, setNewListName] = useState('');
+  const [newRelationship, setNewRelationship] = useState('');
+  const [newInterests, setNewInterests] = useState('');
+  const [newBudget, setNewBudget] = useState('$25–$75');
+  const [newNotes, setNewNotes] = useState('');
+
   const [editingProfile, setEditingProfile] = useState(false);
   const [profileForm, setProfileForm] = useState<RecipientProfile>({
     name: '',
@@ -64,6 +71,24 @@ export const SavedGiftsDrawer: React.FC<SavedGiftsDrawerProps> = ({
   const [noteText, setNoteText] = useState('');
   const [copied, setCopied] = useState(false);
 
+  // Sync selectedListId with activeListId or fallback to first list
+  useEffect(() => {
+    if (activeListId) {
+      setSelectedListId(activeListId);
+    } else if (!selectedListId && lists.length > 0) {
+      setSelectedListId(lists[0].id);
+    }
+  }, [activeListId, lists]);
+
+  // If opened via drawerCreateMode, auto-expand create profile form
+  useEffect(() => {
+    if (savedDrawerOpen && drawerCreateMode) {
+      setIsCreatingList(true);
+      setIsProfileType(true);
+      setDrawerCreateMode(false);
+    }
+  }, [savedDrawerOpen, drawerCreateMode]);
+
   if (!savedDrawerOpen) return null;
 
   const currentList = lists.find(l => l.id === selectedListId) || lists[0];
@@ -75,12 +100,31 @@ export const SavedGiftsDrawer: React.FC<SavedGiftsDrawerProps> = ({
 
   const handleCreateList = (e: React.FormEvent) => {
     e.preventDefault();
-    if (newListName.trim()) {
-      const newList = createList(newListName.trim());
-      setSelectedListId(newList.id);
-      setNewListName('');
-      setIsCreatingList(false);
+    if (!newListName.trim()) return;
+
+    let profile: RecipientProfile | undefined = undefined;
+    if (isProfileType) {
+      profile = {
+        name: newListName.trim(),
+        relationship: newRelationship.trim() || newListName.trim(),
+        interests: newInterests
+          .split(',')
+          .map(s => s.trim())
+          .filter(Boolean),
+        budgetRange: newBudget.trim() || '$25–$75',
+        occasions: ['Birthday', 'Christmas & Holidays'],
+        personalityStyles: ['Practical & Utilitarian'],
+        notes: newNotes.trim()
+      };
     }
+
+    const newList = createList(newListName.trim(), profile);
+    setSelectedListId(newList.id);
+    setNewListName('');
+    setNewRelationship('');
+    setNewInterests('');
+    setNewNotes('');
+    setIsCreatingList(false);
   };
 
   const handleStartProfileEdit = () => {
@@ -103,9 +147,20 @@ export const SavedGiftsDrawer: React.FC<SavedGiftsDrawerProps> = ({
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
     if (currentList) {
-      updateList(currentList.id, currentList.name, profileForm);
+      updateList(currentList.id, profileForm.name.trim() || currentList.name, profileForm);
       setEditingProfile(false);
     }
+  };
+
+  const handleDeleteList = (id: string) => {
+    deleteList(id);
+    const remaining = lists.filter(l => l.id !== id);
+    if (remaining.length > 0) {
+      setSelectedListId(remaining[0].id);
+    } else {
+      setSelectedListId('');
+    }
+    setEditingProfile(false);
   };
 
   const handleCopySummary = () => {
@@ -113,7 +168,7 @@ export const SavedGiftsDrawer: React.FC<SavedGiftsDrawerProps> = ({
     const lines = [
       `🎁 Science of Gifts — List: ${currentList.name}`,
       ...(currentList.recipientProfile?.interests?.length
-        ? [`Interests: ${currentList.recipientProfile.interests.join(', ')}`]
+        ? [`Interests: ${currentList.recipientProfile.interests.join(' · ')}`]
         : []),
       ...(currentList.recipientProfile?.notes
         ? [`Notes: ${currentList.recipientProfile.notes}`]
@@ -156,7 +211,7 @@ export const SavedGiftsDrawer: React.FC<SavedGiftsDrawerProps> = ({
             <div className="flex items-center gap-2">
               <Bookmark className="w-4 h-4 text-[#226E56] fill-[#C3F3DF]" />
               <h2 className="font-editorial text-2xl font-bold text-[#1E232B]">
-                Your Gift Lists
+                Your Gift Lists & Recipients
               </h2>
             </div>
 
@@ -176,30 +231,70 @@ export const SavedGiftsDrawer: React.FC<SavedGiftsDrawerProps> = ({
               
               <div className="p-3 border-b border-[#E2E5E9] flex items-center justify-between">
                 <span className="font-mono-accent text-[11px] font-semibold uppercase tracking-wider text-[#5A6270]">
-                  Recipients & Lists
+                  Lists & Recipients
                 </span>
                 <button
                   onClick={() => setIsCreatingList(true)}
                   className="text-xs text-[#2A548E] hover:text-[#1E232B] font-semibold flex items-center gap-1 cursor-pointer"
-                  title="Create new gift list"
+                  title="Create new gift list or recipient profile"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>New</span>
                 </button>
               </div>
 
-              {/* Inline Create Form */}
+              {/* Inline Create Form (Supports both Wishlist & Recipient Profile) */}
               {isCreatingList && (
-                <form onSubmit={handleCreateList} className="p-3 border-b border-[#E2E5E9] bg-white">
+                <form onSubmit={handleCreateList} className="p-3 border-b border-[#E2E5E9] bg-white space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-[#1E232B] uppercase font-mono-accent">
+                      {isProfileType ? 'New Recipient' : 'New Wishlist'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setIsProfileType(!isProfileType)}
+                      className="text-[10px] text-[#2A548E] hover:underline"
+                    >
+                      {isProfileType ? 'Switch to Wishlist' : 'Add Profile Details'}
+                    </button>
+                  </div>
+
                   <input
                     type="text"
                     value={newListName}
                     onChange={(e) => setNewListName(e.target.value)}
-                    placeholder="List name (e.g. Sarah)..."
-                    className="w-full text-xs font-sans-clean px-2 py-1.5 border border-[#DCE1E7] rounded-xs focus:outline-none focus:border-[#2A548E] mb-2"
+                    placeholder={isProfileType ? "Name (e.g. Sarah, Dad)..." : "List name (e.g. Birthday)..."}
+                    className="w-full text-xs font-sans-clean px-2.5 py-1.5 border border-[#DCE1E7] rounded-xs focus:outline-none focus:border-[#2A548E]"
                     autoFocus
                   />
-                  <div className="flex justify-end gap-1.5">
+
+                  {isProfileType && (
+                    <>
+                      <input
+                        type="text"
+                        value={newInterests}
+                        onChange={(e) => setNewInterests(e.target.value)}
+                        placeholder="Interests (e.g. WWII, Coffee)..."
+                        className="w-full text-xs font-sans-clean px-2.5 py-1 border border-[#DCE1E7] rounded-xs focus:outline-none focus:border-[#2A548E]"
+                      />
+                      <input
+                        type="text"
+                        value={newBudget}
+                        onChange={(e) => setNewBudget(e.target.value)}
+                        placeholder="Budget (e.g. $25–$75)..."
+                        className="w-full text-xs font-sans-clean px-2.5 py-1 border border-[#DCE1E7] rounded-xs focus:outline-none focus:border-[#2A548E]"
+                      />
+                      <input
+                        type="text"
+                        value={newNotes}
+                        onChange={(e) => setNewNotes(e.target.value)}
+                        placeholder="Quirks / Avoid (e.g. No mugs)..."
+                        className="w-full text-xs font-sans-clean px-2.5 py-1 border border-[#DCE1E7] rounded-xs focus:outline-none focus:border-[#2A548E]"
+                      />
+                    </>
+                  )}
+
+                  <div className="flex justify-end gap-1.5 pt-1">
                     <button
                       type="button"
                       onClick={() => {
@@ -213,7 +308,7 @@ export const SavedGiftsDrawer: React.FC<SavedGiftsDrawerProps> = ({
                     <button
                       type="submit"
                       disabled={!newListName.trim()}
-                      className="px-2.5 py-0.5 text-[11px] bg-[#1E232B] text-white rounded-xs font-semibold"
+                      className="px-2.5 py-0.5 text-[11px] bg-[#1E232B] hover:bg-[#2A548E] text-white rounded-xs font-semibold cursor-pointer"
                     >
                       Create
                     </button>
@@ -223,43 +318,49 @@ export const SavedGiftsDrawer: React.FC<SavedGiftsDrawerProps> = ({
 
               {/* List Tabs */}
               <div className="flex-1 overflow-y-auto p-2 space-y-1">
-                {lists.map((list) => {
-                  const count = savedItems.filter(i => i.listIds.includes(list.id)).length;
-                  const isSelected = list.id === selectedListId;
+                {lists.length === 0 ? (
+                  <div className="p-4 text-center text-xs text-[#8D96A5]">
+                    No lists created yet.
+                  </div>
+                ) : (
+                  lists.map((list) => {
+                    const count = savedItems.filter(i => i.listIds.includes(list.id)).length;
+                    const isSelected = list.id === selectedListId;
 
-                  return (
-                    <button
-                      key={list.id}
-                      onClick={() => {
-                        setSelectedListId(list.id);
-                        setEditingProfile(false);
-                      }}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xs text-xs font-sans-clean transition-colors text-left cursor-pointer ${
-                        isSelected
-                          ? 'bg-[#1E232B] text-white font-semibold shadow-2xs'
-                          : 'text-[#1E232B] hover:bg-[#EAEFF5]'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 truncate">
-                        {list.recipientProfile ? (
-                          <User className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-[#C3F3DF]' : 'text-[#5A6270]'}`} />
-                        ) : (
-                          <Folder className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-[#C3F3DF]' : 'text-[#5A6270]'}`} />
-                        )}
-                        <span className="truncate">{list.name}</span>
-                      </div>
-                      <span
-                        className={`font-mono-accent text-[11px] px-1.5 py-0.2 rounded-full shrink-0 ${
+                    return (
+                      <button
+                        key={list.id}
+                        onClick={() => {
+                          setSelectedListId(list.id);
+                          setEditingProfile(false);
+                        }}
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xs text-xs font-sans-clean transition-colors text-left cursor-pointer ${
                           isSelected
-                            ? 'bg-[#373D47] text-[#C3F3DF]'
-                            : 'bg-[#E2E5E9] text-[#5A6270]'
+                            ? 'bg-[#1E232B] text-white font-semibold shadow-2xs'
+                            : 'text-[#1E232B] hover:bg-[#EAEFF5]'
                         }`}
                       >
-                        {count}
-                      </span>
-                    </button>
-                  );
-                })}
+                        <div className="flex items-center gap-2 truncate">
+                          {list.recipientProfile ? (
+                            <User className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-[#C3F3DF]' : 'text-[#5A6270]'}`} />
+                          ) : (
+                            <Folder className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-[#C3F3DF]' : 'text-[#5A6270]'}`} />
+                          )}
+                          <span className="truncate">{list.name}</span>
+                        </div>
+                        <span
+                          className={`font-mono-accent text-[11px] px-1.5 py-0.2 rounded-full shrink-0 ${
+                            isSelected
+                              ? 'bg-[#373D47] text-[#C3F3DF]'
+                              : 'bg-[#E2E5E9] text-[#5A6270]'
+                          }`}
+                        >
+                          {count}
+                        </span>
+                      </button>
+                    );
+                  })
+                )}
               </div>
 
             </div>
@@ -267,7 +368,7 @@ export const SavedGiftsDrawer: React.FC<SavedGiftsDrawerProps> = ({
             {/* Right Column: Active List Details & Saved Products */}
             <div className="flex-1 flex flex-col overflow-y-auto bg-[#FAF8F5]">
               
-              {currentList && (
+              {currentList ? (
                 <>
                   {/* List Header & Recipient Info Card */}
                   <div className="p-5 border-b border-[#E2E5E9] bg-white">
@@ -290,32 +391,32 @@ export const SavedGiftsDrawer: React.FC<SavedGiftsDrawerProps> = ({
 
                       {/* Recipient Action Buttons */}
                       <div className="flex items-center gap-2">
-                        <button
-                          onClick={handleShopForThisRecipient}
-                          className="px-3 py-1.5 bg-[#2A548E] hover:bg-[#1B3C6B] text-white text-xs font-semibold rounded-xs transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
-                          title="Search specifically for this recipient"
-                        >
-                          <Sparkles className="w-3.5 h-3.5 text-[#99BFF9]" />
-                          <span>Find Gifts for {currentList.name}</span>
-                        </button>
+                        {currentList.recipientProfile && (
+                          <button
+                            onClick={handleShopForThisRecipient}
+                            className="px-3 py-1.5 bg-[#2A548E] hover:bg-[#1B3C6B] text-white text-xs font-semibold rounded-xs transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                            title="Search specifically for this recipient"
+                          >
+                            <Sparkles className="w-3.5 h-3.5 text-[#99BFF9]" />
+                            <span>Find Gifts for {currentList.name}</span>
+                          </button>
+                        )}
 
                         <button
                           onClick={handleStartProfileEdit}
                           className="p-1.5 text-[#5A6270] hover:text-[#1E232B] border border-[#DCE1E7] rounded-xs hover:bg-[#F2F4F7] cursor-pointer"
-                          title="Edit recipient profile preferences"
+                          title="Edit recipient profile preferences or rename list"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
                         </button>
 
-                        {!currentList.isDefault && (
-                          <button
-                            onClick={() => deleteList(currentList.id)}
-                            className="p-1.5 text-[#5A6270] hover:text-red-600 border border-[#DCE1E7] rounded-xs hover:bg-red-50 cursor-pointer"
-                            title="Delete this list"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
+                        <button
+                          onClick={() => handleDeleteList(currentList.id)}
+                          className="p-1.5 text-[#5A6270] hover:text-red-600 border border-[#DCE1E7] rounded-xs hover:bg-red-50 cursor-pointer"
+                          title="Delete this list"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </div>
 
@@ -347,7 +448,7 @@ export const SavedGiftsDrawer: React.FC<SavedGiftsDrawerProps> = ({
                     {editingProfile && (
                       <form onSubmit={handleSaveProfile} className="mt-3 p-4 bg-[#F5F2EC] border border-[#DCE1E7] rounded-xs space-y-3 text-xs font-sans-clean">
                         <div className="font-semibold text-[#1E232B] border-b border-[#E2E5E9] pb-1 flex justify-between items-center">
-                          <span>Recipient Preferences for {currentList.name}</span>
+                          <span>Edit Profile for {currentList.name}</span>
                           <button
                             type="button"
                             onClick={() => setEditingProfile(false)}
@@ -355,6 +456,18 @@ export const SavedGiftsDrawer: React.FC<SavedGiftsDrawerProps> = ({
                           >
                             Cancel
                           </button>
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-semibold text-[#5A6270] mb-1">
+                            Recipient / List Name
+                          </label>
+                          <input
+                            type="text"
+                            value={profileForm.name}
+                            onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
+                            className="w-full px-2.5 py-1.5 bg-white border border-[#DCE1E7] rounded-xs focus:outline-none focus:border-[#2A548E]"
+                          />
                         </div>
 
                         <div>
@@ -439,13 +552,15 @@ export const SavedGiftsDrawer: React.FC<SavedGiftsDrawerProps> = ({
                         <p className="font-sans-clean text-xs max-w-xs mx-auto leading-relaxed mb-4">
                           Browse recommendations and click &ldquo;Save to List&rdquo; to collect ideas for {currentList.name}.
                         </p>
-                        <button
-                          onClick={handleShopForThisRecipient}
-                          className="px-4 py-2 bg-[#1E232B] hover:bg-[#2A548E] text-white text-xs font-semibold rounded-xs transition-colors inline-flex items-center gap-2 cursor-pointer shadow-xs"
-                        >
-                          <Sparkles className="w-3.5 h-3.5 text-[#C3F3DF]" />
-                          <span>Discover Gifts for {currentList.name}</span>
-                        </button>
+                        {currentList.recipientProfile ? (
+                          <button
+                            onClick={handleShopForThisRecipient}
+                            className="px-4 py-2 bg-[#1E232B] hover:bg-[#2A548E] text-white text-xs font-semibold rounded-xs transition-colors inline-flex items-center gap-2 cursor-pointer shadow-xs"
+                          >
+                            <Sparkles className="w-3.5 h-3.5 text-[#C3F3DF]" />
+                            <span>Discover Gifts for {currentList.name}</span>
+                          </button>
+                        ) : null}
                       </div>
                     ) : (
                       listItems.map(({ product, note, isPurchased }) => (
@@ -491,7 +606,7 @@ export const SavedGiftsDrawer: React.FC<SavedGiftsDrawerProps> = ({
                               <div className="flex items-center gap-2 text-[11px] font-sans-clean text-[#5A6270]">
                                 <span>{product.category}</span>
                                 {isPurchased && (
-                                  <span className="text-[#226E56] font-semibold bg-[#C3F3DF] px-1.5 py-0.2 rounded-xs text-[10px]">
+                                   <span className="text-[#226E56] font-semibold bg-[#C3F3DF] px-1.5 py-0.2 rounded-xs text-[10px]">
                                     Purchased
                                   </span>
                                 )}
@@ -562,9 +677,16 @@ export const SavedGiftsDrawer: React.FC<SavedGiftsDrawerProps> = ({
 
                           {/* Right side: Price & Links */}
                           <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-[#F0F2F5]">
-                            <span className="font-mono-accent text-sm font-semibold text-[#1E232B]">
-                              {product.price}
-                            </span>
+                            <div className="text-right">
+                              <span className="font-mono-accent text-sm font-semibold text-[#1E232B] block">
+                                {isAmazonProduct(product) ? (product.priceRange || product.price) : product.price}
+                              </span>
+                              {isAmazonProduct(product) && (
+                                <span className="text-[10px] text-[#2A548E] font-medium block">
+                                  Amazon Price Range
+                                </span>
+                              )}
+                            </div>
 
                             <div className="flex items-center gap-1.5">
                               <a
@@ -597,14 +719,19 @@ export const SavedGiftsDrawer: React.FC<SavedGiftsDrawerProps> = ({
                         <span className="text-[11px] font-mono-accent uppercase tracking-wider text-[#5A6270] block">
                           Estimated Subtotal
                         </span>
-                        <span className="font-mono-accent text-lg font-bold text-[#1E232B]">
-                          ${totalValue.toFixed(2)}
+                        <span className="font-mono-accent text-lg font-bold text-[#1E232B] block">
+                          ~${totalValue.toFixed(2)}
                         </span>
+                        {listItems.some(i => isAmazonProduct(i.product)) && (
+                          <span className="text-[10px] text-[#5A6270] italic block mt-0.5">
+                            Includes estimated Amazon items (prices subject to change)
+                          </span>
+                        )}
                       </div>
 
                       <button
                         onClick={handleCopySummary}
-                        className="px-4 py-2 bg-[#1E232B] hover:bg-[#2A548E] text-white text-xs font-semibold rounded-xs transition-colors inline-flex items-center gap-2 cursor-pointer shadow-xs"
+                        className="px-4 py-2 bg-[#1E232B] hover:bg-[#2A548E] text-white text-xs font-semibold rounded-xs transition-colors inline-flex items-center gap-2 cursor-pointer shadow-xs shrink-0"
                       >
                         {copied ? <Check className="w-3.5 h-3.5 text-[#C3F3DF]" /> : <Copy className="w-3.5 h-3.5" />}
                         <span>{copied ? 'List Copied!' : 'Copy Gift List'}</span>
@@ -612,6 +739,19 @@ export const SavedGiftsDrawer: React.FC<SavedGiftsDrawerProps> = ({
                     </div>
                   )}
                 </>
+              ) : (
+                <div className="p-12 text-center text-[#5A6270]">
+                  <p className="font-sans-clean text-sm mb-4">No active list selected.</p>
+                  <button
+                    onClick={() => {
+                      setIsCreatingList(true);
+                      setIsProfileType(true);
+                    }}
+                    className="px-4 py-2 bg-[#1E232B] text-white text-xs font-semibold rounded-xs hover:bg-[#2A548E]"
+                  >
+                    Create a Recipient Profile
+                  </button>
+                </div>
               )}
 
             </div>

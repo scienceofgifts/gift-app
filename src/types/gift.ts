@@ -25,7 +25,17 @@ export interface Product {
   productUrl: string;
   inStock: boolean;
   rating: number;
-  reviewCount: number;
+  reviewCount?: number;
+  presentationTip?: string;
+  relatedProductIds?: string[];
+  isAmazonItem?: boolean;
+}
+
+export function isAmazonProduct(product: Product): boolean {
+  if (product.isAmazonItem) return true;
+  const vendorLower = product.vendor ? product.vendor.toLowerCase() : '';
+  const urlLower = product.productUrl ? product.productUrl.toLowerCase() : '';
+  return vendorLower.includes('amazon') || urlLower.includes('amazon.com') || urlLower.includes('amzn.to');
 }
 
 export interface RecipientProfile {
@@ -95,5 +105,6 @@ export interface FilterState {
   productTypes: string[];
   occasions: string[];
   personalityStyles: string[];
+  avoidKeywords: string[];
   sortBy: 'relevance' | 'price-asc' | 'price-desc' | 'rating';
 }

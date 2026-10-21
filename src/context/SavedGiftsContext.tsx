@@ -23,50 +23,19 @@ interface SavedGiftsContextType {
   activeListId: string | null;
   setActiveListId: (id: string | null) => void;
   totalSavedCount: number;
+  drawerCreateMode: boolean;
+  setDrawerCreateMode: (open: boolean) => void;
+  openDrawerToCreateProfile: () => void;
+  openDrawerToEditProfile: (listId: string) => void;
 }
 
 const STORAGE_KEY_ITEMS = 'science_of_gifts_saved_items_v2';
-const STORAGE_KEY_LISTS = 'science_of_gifts_lists_v2';
+const STORAGE_KEY_LISTS = 'science_of_gifts_lists_v3';
 
 const DEFAULT_LISTS: GiftList[] = [
   {
-    id: 'list-dad',
-    name: 'Dad',
-    isDefault: true,
-    recipientProfile: {
-      name: 'Dad',
-      relationship: 'Dad',
-      interests: ['WWII', 'Military History', 'Tactile Mechanics'],
-      budgetRange: '$25–$75',
-      maxBudget: 75,
-      occasions: ['Father’s Day', 'Christmas & Holidays', 'Birthday'],
-      personalityStyles: ['Practical & Utilitarian', 'Nostalgic & Historic'],
-      notes: 'Already has too many mugs. Prefers durable, practical tools or historical items.'
-    },
-    createdAt: Date.now() - 86400000 * 2,
-    updatedAt: Date.now() - 86400000 * 2
-  },
-  {
-    id: 'list-mom',
-    name: 'Mom',
-    isDefault: true,
-    recipientProfile: {
-      name: 'Mom',
-      relationship: 'Mom',
-      interests: ['Botany & Nature', 'Literature & Writing', 'Greek Mythology'],
-      budgetRange: '$25–$50',
-      maxBudget: 50,
-      occasions: ['Mother’s Day', 'Birthday', 'Christmas & Holidays'],
-      personalityStyles: ['Refined & Discerning', 'Creative & Artistic'],
-      notes: 'Loves gardening, ancient stories, and cozy reading accessories.'
-    },
-    createdAt: Date.now() - 86400000,
-    updatedAt: Date.now() - 86400000
-  },
-  {
     id: 'list-general',
-    name: 'General Wishlist',
-    isDefault: true,
+    name: 'My Saved Gifts',
     createdAt: Date.now(),
     updatedAt: Date.now()
   }
@@ -78,7 +47,15 @@ export const SavedGiftsProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [lists, setLists] = useState<GiftList[]>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY_LISTS);
-      return stored ? JSON.parse(stored) : DEFAULT_LISTS;
+      if (stored) {
+        const parsed: GiftList[] = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Remove legacy hardcoded demo IDs if present from previous sessions
+          const cleaned = parsed.filter(l => l.id !== 'list-dad' && l.id !== 'list-mom');
+          return cleaned.length > 0 ? cleaned : DEFAULT_LISTS;
+        }
+      }
+      return DEFAULT_LISTS;
     } catch {
       return DEFAULT_LISTS;
     }
@@ -99,6 +76,7 @@ export const SavedGiftsProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [activeShoppingRecipient, setActiveShoppingRecipient] = useState<GiftList | null>(null);
   const [savedDrawerOpen, setSavedDrawerOpen] = useState(false);
   const [activeListId, setActiveListId] = useState<string | null>(null);
+  const [drawerCreateMode, setDrawerCreateMode] = useState(false);
 
   // Sync to localStorage
   useEffect(() => {
@@ -161,6 +139,18 @@ export const SavedGiftsProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     if (activeShoppingRecipient?.id === id) {
       setActiveShoppingRecipient(null);
     }
+  };
+
+  const openDrawerToCreateProfile = () => {
+    setDrawerCreateMode(true);
+    setActiveListId(null);
+    setSavedDrawerOpen(true);
+  };
+
+  const openDrawerToEditProfile = (listId: string) => {
+    setActiveListId(listId);
+    setDrawerCreateMode(false);
+    setSavedDrawerOpen(true);
   };
 
   const isSaved = (productId: string, listId?: string): boolean => {
@@ -272,7 +262,11 @@ export const SavedGiftsProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         setSavedDrawerOpen,
         activeListId,
         setActiveListId,
-        totalSavedCount
+        totalSavedCount,
+        drawerCreateMode,
+        setDrawerCreateMode,
+        openDrawerToCreateProfile,
+        openDrawerToEditProfile
       }}
     >
       {children}

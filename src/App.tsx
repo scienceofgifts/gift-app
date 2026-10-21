@@ -20,7 +20,9 @@ import { SavedGiftsDrawer } from './components/SavedGiftsDrawer';
 import { CuratedCollections } from './components/CuratedCollections';
 import { FAQSection } from './components/FAQSection';
 import { Footer } from './components/Footer';
-import { SlidersHorizontal, RotateCcw, User, X } from 'lucide-react';
+import { QuickConciergeQuizModal, QuizResults } from './components/QuickConciergeQuizModal';
+import { EditorialArchetype } from './data/archetypes';
+import { SlidersHorizontal, RotateCcw, User } from 'lucide-react';
 
 const INITIAL_QUERY = "Gift for my dad who loves WWII history and doesn't like useless stuff";
 
@@ -29,6 +31,7 @@ function GiftFinderMain() {
   const [isMatchingAnimation, setIsMatchingAnimation] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [refineDrawerOpen, setRefineDrawerOpen] = useState(false);
+  const [quizModalOpen, setQuizModalOpen] = useState(false);
 
   const {
     activeShoppingRecipient,
@@ -44,6 +47,7 @@ function GiftFinderMain() {
     productTypes: [],
     occasions: [],
     personalityStyles: [],
+    avoidKeywords: [],
     sortBy: 'relevance'
   });
 
@@ -95,8 +99,60 @@ function GiftFinderMain() {
       productTypes: [],
       occasions: [],
       personalityStyles: [],
+      avoidKeywords: [],
       sortBy: 'relevance'
     });
+  };
+
+  const handleToggleAvoidKeyword = (term: string) => {
+    const current = filters.avoidKeywords || [];
+    const exists = current.includes(term);
+    const updated = exists ? current.filter(t => t !== term) : [...current, term];
+    setFilters(prev => ({ ...prev, avoidKeywords: updated }));
+  };
+
+  const handleSelectArchetype = (archetype: EditorialArchetype) => {
+    setFilters(prev => ({
+      ...prev,
+      recipients: [],
+      interests: archetype.defaultFilters.interests || [],
+      personalityStyles: archetype.defaultFilters.personalityStyles || [],
+      avoidKeywords: archetype.defaultFilters.avoidKeywords || []
+    }));
+    handleSearch(archetype.query);
+  };
+
+  const handleCompleteQuiz = (results: QuizResults) => {
+    const interestMapping: { [key: string]: { label: string; interests: string[] } } = {
+      History: { label: 'WWII & Cartography', interests: ['WWII', 'Cartography & Maps', 'Military History'] },
+      Astronomy: { label: 'Deep Space & Astronomy', interests: ['Astronomy & Space', 'Physics & Math'] },
+      Coffee: { label: 'Specialty Coffee', interests: ['Coffee & Brewing', 'Tactile Mechanics'] },
+      Literature: { label: 'Mythology & Literature', interests: ['Greek Mythology', 'Literature & Writing'] },
+      Mechanics: { label: 'Tactile Mechanics', interests: ['Tactile Mechanics', 'Vintage Horology'] }
+    };
+
+    const target = interestMapping[results.interest] || { label: results.interest, interests: [] };
+
+    let priceRange: FilterState['priceRange'] = 'all';
+    let maxPrice: number | null = null;
+    if (results.priceBracket === 'under30') {
+      priceRange = 'under25';
+      maxPrice = 30;
+    } else if (results.priceBracket === '30to60') {
+      priceRange = '25to50';
+      maxPrice = 60;
+    }
+
+    setFilters(prev => ({
+      ...prev,
+      recipients: [results.recipient],
+      interests: target.interests,
+      priceRange,
+      maxPrice
+    }));
+
+    const generatedPrompt = `Distinctive ${target.label} gift for ${results.recipient}`;
+    handleSearch(generatedPrompt);
   };
 
   const handleShopForRecipient = (list: GiftList) => {
@@ -152,6 +208,10 @@ function GiftFinderMain() {
         isSearching={isMatchingAnimation}
         activeShoppingRecipient={activeShoppingRecipient}
         onClearActiveRecipient={() => setActiveShoppingRecipient(null)}
+        avoidKeywords={filters.avoidKeywords || []}
+        onToggleAvoidKeyword={handleToggleAvoidKeyword}
+        onSelectArchetype={handleSelectArchetype}
+        onOpenQuiz={() => setQuizModalOpen(true)}
       />
 
       {/* Main Content Area */}
@@ -183,6 +243,12 @@ function GiftFinderMain() {
                   <span className="inline-flex items-center gap-1.5 bg-[#C3F3DF] text-[#1E232B] text-xs font-sans-clean font-semibold px-2.5 py-0.5 rounded-xs border border-[#9ADBBC]">
                     <User className="w-3 h-3 text-[#226E56]" />
                     <span>Shopping for {activeShoppingRecipient.name} (Deprioritizing saved)</span>
+                  </span>
+                )}
+
+                {filters.avoidKeywords && filters.avoidKeywords.length > 0 && (
+                  <span className="font-mono-accent text-[11px] text-[#8D96A5] bg-[#F2F4F7] px-2 py-0.5 rounded-xs">
+                    Filtered: {filters.avoidKeywords.join(', ')} avoided
                   </span>
                 )}
               </div>
@@ -242,6 +308,7 @@ function GiftFinderMain() {
       <ProductDetailModal
         product={selectedProduct}
         onClose={() => setSelectedProduct(null)}
+        onSelectProduct={(p) => setSelectedProduct(p)}
       />
 
       <RefineDrawer
@@ -255,6 +322,13 @@ function GiftFinderMain() {
       <SavedGiftsDrawer
         onSelectProduct={(p) => setSelectedProduct(p)}
         onShopForRecipient={handleShopForRecipient}
+      />
+
+      {/* Quick Concierge 3-Step Quiz Modal */}
+      <QuickConciergeQuizModal
+        isOpen={quizModalOpen}
+        onClose={() => setQuizModalOpen(false)}
+        onComplete={handleCompleteQuiz}
       />
 
       {/* Footer */}

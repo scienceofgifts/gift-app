@@ -1,12 +1,13 @@
 import React from 'react';
-import { X, RotateCcw, SlidersHorizontal } from 'lucide-react';
+import { X, RotateCcw, SlidersHorizontal, Ban } from 'lucide-react';
 import { FilterState } from '../types/gift';
 import {
   RECIPIENTS,
   INTERESTS,
   OCCASIONS,
   PRODUCT_TYPES,
-  PERSONALITY_STYLES
+  PERSONALITY_STYLES,
+  AVOID_PRESETS
 } from '../data/catalog';
 
 interface RefineDrawerProps {
@@ -36,6 +37,13 @@ export const RefineDrawer: React.FC<RefineDrawerProps> = ({
     onFilterChange({ ...filters, [key]: updated });
   };
 
+  const toggleAvoidFilter = (term: string) => {
+    const current = filters.avoidKeywords || [];
+    const exists = current.includes(term);
+    const updated = exists ? current.filter(item => item !== term) : [...current, term];
+    onFilterChange({ ...filters, avoidKeywords: updated });
+  };
+
   const handlePriceRange = (range: FilterState['priceRange']) => {
     onFilterChange({ ...filters, priceRange: range });
   };
@@ -49,6 +57,7 @@ export const RefineDrawer: React.FC<RefineDrawerProps> = ({
       productTypes: [],
       occasions: [],
       personalityStyles: [],
+      avoidKeywords: [],
       sortBy: 'relevance'
     });
   };
@@ -59,7 +68,8 @@ export const RefineDrawer: React.FC<RefineDrawerProps> = ({
     (filters.priceRange !== 'all' ? 1 : 0) +
     filters.productTypes.length +
     filters.occasions.length +
-    filters.personalityStyles.length;
+    filters.personalityStyles.length +
+    (filters.avoidKeywords?.length || 0);
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden" role="dialog" aria-modal="true">
@@ -101,53 +111,84 @@ export const RefineDrawer: React.FC<RefineDrawerProps> = ({
             {/* Sort Order */}
             <div>
               <label className="font-mono-accent text-[11px] font-bold uppercase tracking-wider text-[#5A6270] block mb-2.5">
-                Sort Results By
+                Sort By
               </label>
               <div className="grid grid-cols-2 gap-2">
                 {[
-                  { label: 'Concierge Relevance', value: 'relevance' },
-                  { label: 'Price: Low to High', value: 'price-asc' },
-                  { label: 'Price: High to Low', value: 'price-desc' },
-                  { label: 'Highest Rated', value: 'rating' }
-                ].map((opt) => (
+                  { id: 'relevance', label: 'Smart Relevance' },
+                  { id: 'price-asc', label: 'Price: Low to High' },
+                  { id: 'price-desc', label: 'Price: High to Low' },
+                  { id: 'rating', label: 'Highest Rated' },
+                ].map((s) => (
                   <button
-                    key={opt.value}
-                    onClick={() => onFilterChange({ ...filters, sortBy: opt.value as any })}
-                    className={`px-3 py-2 text-xs font-sans-clean rounded-xs border text-left transition-colors cursor-pointer ${
-                      filters.sortBy === opt.value
+                    key={s.id}
+                    onClick={() => onFilterChange({ ...filters, sortBy: s.id as any })}
+                    className={`px-3 py-2 text-xs font-sans-clean rounded-xs border transition-colors text-left cursor-pointer ${
+                      filters.sortBy === s.id
                         ? 'bg-[#1E232B] text-white border-[#1E232B] font-semibold'
                         : 'bg-white text-[#1E232B] border-[#DCE1E7] hover:bg-[#EAEFF5]'
                     }`}
                   >
-                    {opt.label}
+                    {s.label}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Budget / Price Range */}
+            {/* Anti-Gift / Avoid Clichés & Items */}
+            <div>
+              <div className="flex items-center gap-1.5 mb-2.5">
+                <Ban className="w-3.5 h-3.5 text-[#8D96A5]" />
+                <label className="font-mono-accent text-[11px] font-bold uppercase tracking-wider text-[#5A6270]">
+                  Filter Out Clichés (What to Avoid)
+                </label>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {AVOID_PRESETS.map((preset) => {
+                  const active = (filters.avoidKeywords || []).includes(preset.term);
+                  return (
+                    <button
+                      key={preset.id}
+                      onClick={() => toggleAvoidFilter(preset.term)}
+                      className={`px-2.5 py-1 text-xs font-sans-clean rounded-xs border transition-colors cursor-pointer flex items-center gap-1 ${
+                        active
+                          ? 'bg-[#1E232B] text-white border-[#1E232B] font-semibold shadow-2xs'
+                          : 'bg-white text-[#5A6270] hover:text-[#1E232B] border-[#DCE1E7] hover:bg-[#EAEFF5]'
+                      }`}
+                    >
+                      <span className={active ? 'text-[#C3F3DF]' : 'text-[#8D96A5]'}>
+                        {active ? '✕' : '–'}
+                      </span>
+                      <span>{preset.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Budget Presets */}
             <div>
               <label className="font-mono-accent text-[11px] font-bold uppercase tracking-wider text-[#5A6270] block mb-2.5">
-                Budget / Price Bracket
+                Target Budget
               </label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 {[
-                  { label: 'Any Price', val: 'all' },
-                  { label: 'Under $25', val: 'under25' },
-                  { label: '$25–$50', val: '25to50' },
-                  { label: '$50–$75', val: '50to75' },
-                  { label: '$75+', val: '75plus' }
-                ].map((tier) => (
+                  { id: 'all', label: 'All Budgets' },
+                  { id: 'under25', label: 'Under $25' },
+                  { id: '25to50', label: '$25 – $50' },
+                  { id: '50to75', label: '$50 – $75' },
+                  { id: '75plus', label: '$75 & Above' },
+                ].map((b) => (
                   <button
-                    key={tier.val}
-                    onClick={() => handlePriceRange(tier.val as any)}
-                    className={`px-2.5 py-1.5 text-xs font-sans-clean rounded-xs border text-center transition-colors cursor-pointer ${
-                      filters.priceRange === tier.val
+                    key={b.id}
+                    onClick={() => handlePriceRange(b.id as any)}
+                    className={`px-3 py-2 text-xs font-sans-clean rounded-xs border transition-colors text-left cursor-pointer ${
+                      filters.priceRange === b.id
                         ? 'bg-[#1E232B] text-white border-[#1E232B] font-semibold'
                         : 'bg-white text-[#1E232B] border-[#DCE1E7] hover:bg-[#EAEFF5]'
                     }`}
                   >
-                    {tier.label}
+                    {b.label}
                   </button>
                 ))}
               </div>
@@ -178,7 +219,7 @@ export const RefineDrawer: React.FC<RefineDrawerProps> = ({
               </div>
             </div>
 
-            {/* Specific Interests & Passions */}
+            {/* Interests & Passions */}
             <div>
               <label className="font-mono-accent text-[11px] font-bold uppercase tracking-wider text-[#5A6270] block mb-2.5">
                 Interests & Passions
@@ -192,7 +233,7 @@ export const RefineDrawer: React.FC<RefineDrawerProps> = ({
                       onClick={() => toggleArrayFilter('interests', interest)}
                       className={`px-2.5 py-1 text-xs font-sans-clean rounded-xs border transition-colors cursor-pointer ${
                         active
-                          ? 'bg-[#1E232B] text-white border-[#1E232B] font-semibold'
+                          ? 'bg-[#2A548E] text-white border-[#2A548E] font-semibold'
                           : 'bg-white text-[#1E232B] border-[#DCE1E7] hover:bg-[#EAEFF5]'
                       }`}
                     >
@@ -203,10 +244,10 @@ export const RefineDrawer: React.FC<RefineDrawerProps> = ({
               </div>
             </div>
 
-            {/* Personality & Style */}
+            {/* Personality & Gifting Style */}
             <div>
               <label className="font-mono-accent text-[11px] font-bold uppercase tracking-wider text-[#5A6270] block mb-2.5">
-                Personality & Style
+                Personality & Gifting Style
               </label>
               <div className="flex flex-wrap gap-1.5">
                 {PERSONALITY_STYLES.map((style) => {
@@ -217,7 +258,7 @@ export const RefineDrawer: React.FC<RefineDrawerProps> = ({
                       onClick={() => toggleArrayFilter('personalityStyles', style)}
                       className={`px-2.5 py-1 text-xs font-sans-clean rounded-xs border transition-colors cursor-pointer ${
                         active
-                          ? 'bg-[#1E232B] text-white border-[#1E232B] font-semibold'
+                          ? 'bg-[#226E56] text-white border-[#226E56] font-semibold'
                           : 'bg-white text-[#1E232B] border-[#DCE1E7] hover:bg-[#EAEFF5]'
                       }`}
                     >
@@ -228,25 +269,25 @@ export const RefineDrawer: React.FC<RefineDrawerProps> = ({
               </div>
             </div>
 
-            {/* Product Type / Format */}
+            {/* Product Type */}
             <div>
               <label className="font-mono-accent text-[11px] font-bold uppercase tracking-wider text-[#5A6270] block mb-2.5">
-                Product Format
+                Product Format / Type
               </label>
               <div className="flex flex-wrap gap-1.5">
-                {PRODUCT_TYPES.map((type) => {
-                  const active = filters.productTypes.includes(type);
+                {PRODUCT_TYPES.map((pt) => {
+                  const active = filters.productTypes.includes(pt);
                   return (
                     <button
-                      key={type}
-                      onClick={() => toggleArrayFilter('productTypes', type)}
+                      key={pt}
+                      onClick={() => toggleArrayFilter('productTypes', pt)}
                       className={`px-2.5 py-1 text-xs font-sans-clean rounded-xs border transition-colors cursor-pointer ${
                         active
                           ? 'bg-[#1E232B] text-white border-[#1E232B] font-semibold'
                           : 'bg-white text-[#1E232B] border-[#DCE1E7] hover:bg-[#EAEFF5]'
                       }`}
                     >
-                      {type}
+                      {pt}
                     </button>
                   );
                 })}

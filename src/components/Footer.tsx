@@ -79,6 +79,13 @@ export const Footer: React.FC = () => {
           </div>
         </div>
 
+        {/* Amazon Affiliate Legal Disclosure */}
+        <div className="pt-6 mt-6 border-t border-[#313742] text-[11px] text-[#7A8290] font-sans-clean text-center sm:text-left leading-relaxed">
+          <p>
+            Science of Gifts is an independent editorial discovery platform. As an Amazon Associate and affiliate partner with archival cultural institutions, we may earn a small commission from qualifying purchases made through our curated links at zero additional cost to you. Product prices and availability are subject to change on merchant sites.
+          </p>
+        </div>
+
       </div>
     </footer>
   );
