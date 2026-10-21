@@ -1,0 +1,6 @@
+{
+  "name": "Science of Gifts – Gift Discovery Engine",
+  "description": "An intelligent, editorial gift discovery engine and concierge by Science of Gifts. Find thoughtful, distinctive gifts matched to recipient personality, interests, and budget.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

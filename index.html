@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en" class="scroll-smooth">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Science of Gifts – Gift Finder & Concierge</title>
+    <meta name="description" content="Discover thoughtful, distinctive gifts curated by recipient interests, personality, occasion, and budget. An intelligent editorial gift discovery engine by Science of Gifts." />
+    <meta property="og:title" content="Science of Gifts – Gift Finder & Concierge" />
+    <meta property="og:description" content="Discover distinctive, curated gifts tailored to your recipient's passions, personality, and your budget." />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Science of Gifts" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Science of Gifts – Gift Finder & Concierge" />
+    <meta name="twitter:description" content="Discover distinctive, curated gifts tailored to your recipient's passions, personality, and your budget." />
+    
+    <!-- Science of Gifts Exact Typography: Playfair Display + Plus Jakarta Sans + JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Structured Data JSON-LD -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebApplication",
+          "name": "Science of Gifts Gift Finder",
+          "url": "https://app.scienceofgifts.com",
+          "applicationCategory": "LifestyleApplication",
+          "operatingSystem": "All",
+          "description": "An editorial gift concierge and natural-language search engine for discovering science, history, literature, art, and curiosity gifts.",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+          }
+        },
+        {
+          "@type": "FAQPage",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "How does the Science of Gifts Gift Finder work?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Our gift discovery engine uses a multi-signal client-side interpretation model. Rather than relying on simple keyword matches, it analyzes recipient relationships, niche passions (like WWII history, cinema, or cartography), budget constraints, and personality traits to deliver an editorial hierarchy of recommendations."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "How do I find a gift for someone who is difficult to shop for?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Focus on their specific niche fascinations and practical preferences in the search box (e.g., 'A practical gift for a father who loves WWII history and avoids clutter'). Our engine filters out generic novelty junk in favor of archival-quality, tactile, and meaningful items."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Can I find gifts within a specific budget?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes. You can specify budgets directly in your natural-language search (e.g. 'under $50') or use the Refine drawer to filter precisely across price ranges, occasions, recipient types, and product formats."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Can I create gift lists for different recipients?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes. You can create multiple custom gift lists (like Dad, Mom, Christmas 2026, or Sarah's Birthday) and save recommendations directly to them. You can also configure recipient profiles to fine-tune future recommendations."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Does this require creating an account?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "No account is required. All saved gift lists, recipient profiles, and custom notes are securely stored directly in your browser using local storage."
+              }
+            }
+          ]
+        }
+      ]
+    }
+    </script>
+  </head>
+  <body class="bg-[#FAF8F5] text-[#1E232B] antialiased selection:bg-[#C3F3DF] selection:text-[#1E232B]">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
